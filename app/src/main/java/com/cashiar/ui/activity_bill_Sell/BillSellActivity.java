@@ -7,8 +7,10 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.ActivityNotFoundException;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -16,10 +18,16 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.net.wifi.ScanResult;
+import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.print.PrintAttributes;
+import android.print.PrintDocumentAdapter;
+import android.print.PrintManager;
+import android.print.pdf.PrintedPdfDocument;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -31,6 +39,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -39,7 +48,6 @@ import androidx.databinding.DataBindingUtil;
 import androidx.print.PrintHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
-import com.cashiar.BuildConfig;
 import com.cashiar.R;
 import com.cashiar.adapters.BluthoosAdapter;
 import com.cashiar.adapters.ProductsSellAdapter;
@@ -54,6 +62,7 @@ import com.cashiar.models.BillModel;
 import com.cashiar.models.CreateOrderModel;
 import com.cashiar.models.ItemCartModel;
 import com.cashiar.models.PaymentModel;
+import com.cashiar.models.PdfDocumentAdpter;
 import com.cashiar.models.SingleCustomerSuplliersModel;
 import com.cashiar.models.UserModel;
 import com.cashiar.mvp.activity_bill_sell_mvp.ActivitBillSellPresenter;
@@ -65,6 +74,20 @@ import com.cashiar.share.Common;
 import com.cashiar.tags.Tags;
 import com.cashiar.ui.activity_add_Customer.AddCustomerActivity;
 import com.cashiar.ui.activity_cart_buy.CartBuyActivity;
+import com.chaos.view.BuildConfig;
+import com.itextpdf.text.Document;
+import com.itextpdf.text.DocumentException;
+import com.itextpdf.text.Image;
+import com.itextpdf.text.PageSize;
+import com.itextpdf.text.Paragraph;
+import com.itextpdf.text.Rectangle;
+import com.itextpdf.text.pdf.PdfWriter;
+import com.karumi.dexter.Dexter;
+import com.karumi.dexter.PermissionToken;
+import com.karumi.dexter.listener.PermissionDeniedResponse;
+import com.karumi.dexter.listener.PermissionGrantedResponse;
+import com.karumi.dexter.listener.PermissionRequest;
+import com.karumi.dexter.listener.single.PermissionListener;
 import com.squareup.picasso.Picasso;
 
 import java.io.ByteArrayOutputStream;
@@ -101,22 +124,18 @@ public class BillSellActivity extends AppCompatActivity implements BillSellActiv
     private String currecny = "";
     private final String write_perm = Manifest.permission.WRITE_EXTERNAL_STORAGE;
     private final int write_req = 100;
-    private final String bluthoos_perm = Manifest.permission.BLUETOOTH;
-    private final String bluthoosadmin_perm = Manifest.permission.BLUETOOTH_ADMIN;
-
-    private final int bluthoos_req = 200;
-
+    //    private final String bluthoos_perm = Manifest.permission.BLUETOOTH;
+//    private final String bluthoosadmin_perm = Manifest.permission.BLUETOOTH_ADMIN;
+//
+//    private final int bluthoos_req = 200;
+//
     private boolean isPermissionGranted = false;
-    private BluetoothAdapter mBluetoothAdapter;
-    private BluetoothDevice mmDevice;
-    private BluetoothSocket mmSocket;
-    private OutputStream mmOutputStream;
-    private InputStream inputStream;
-    private boolean stopWorker;
-    private byte[] readBuffer;
-    private int readBufferPosition;
-    private Thread workerThread;
-    private AlertDialog dialog2;
+    private Image image;
+//    WifiManager wifi;
+//    List<ScanResult> results;
+//    BluthoosAdapter bluthoosAdapter;
+//    private AlertDialog dialog2;
+//    private int size;
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -130,25 +149,25 @@ public class BillSellActivity extends AppCompatActivity implements BillSellActiv
         binding = DataBindingUtil.setContentView(this, R.layout.activity_bill_sell);
         getdatafromintent();
         checkWritePermission();
-        checkBluthoosPermission();
+        // checkBluthoosPermission();
         initView();
 
     }
 
-    private void checkBluthoosPermission() {
-
-        if (ContextCompat.checkSelfPermission(this, bluthoos_perm) != PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(this, bluthoosadmin_perm) != PackageManager.PERMISSION_GRANTED) {
-
-
-            isPermissionGranted = false;
-
-            ActivityCompat.requestPermissions(this, new String[]{bluthoos_perm, bluthoosadmin_perm}, bluthoos_req);
-
-
-        } else {
-            isPermissionGranted = true;
-        }
-    }
+//    private void checkBluthoosPermission() {
+//
+//        if (ContextCompat.checkSelfPermission(this, bluthoos_perm) != PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(this, bluthoosadmin_perm) != PackageManager.PERMISSION_GRANTED) {
+//
+//
+//            isPermissionGranted = false;
+//
+//            ActivityCompat.requestPermissions(this, new String[]{bluthoos_perm, bluthoosadmin_perm}, bluthoos_req);
+//
+//
+//        } else {
+//            isPermissionGranted = true;
+//        }
+//    }
 
     private void checkWritePermission() {
 
@@ -210,22 +229,51 @@ public class BillSellActivity extends AppCompatActivity implements BillSellActiv
         });
 
 
-        binding.btnConfirm.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                //   takeScreenshot(2);
-                findBT();
-                takeScreenshot(2);
-
-            }
-        });
         binding.btnsend.setOnClickListener(new View.OnClickListener() {
+            @RequiresApi(api = Build.VERSION_CODES.KITKAT)
             @Override
             public void onClick(View v) {
                 takeScreenshot(1);
             }
         });
+//        Dexter.withActivity(this).withPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE).withListener(new PermissionListener() {
+//            @Override
+//            public void onPermissionGranted(PermissionGrantedResponse response) {
+//
+//            }
+//
+//            @Override
+//            public void onPermissionDenied(PermissionDeniedResponse response) {
+//
+//            }
+//
+//            @Override
+//            public void onPermissionRationaleShouldBeShown(PermissionRequest permission, PermissionToken token) {
+//
+//            }
+//        });
+//        wifi = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+//        if (wifi.isWifiEnabled() == false) {
+//            Toast.makeText(getApplicationContext(), "wifi is disabled..making it enabled", Toast.LENGTH_LONG).show();
+//            wifi.setWifiEnabled(true);
+//        }
+//        registerReceiver(new BroadcastReceiver() {
+//            @Override
+//            public void onReceive(Context c, Intent intent) {
+//                results = wifi.getScanResults();
+//                size = results.size();
+//               // Log.e("lxllx",size+"");
+//            }
+//        }, new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
+        binding.btnConfirm.setOnClickListener(new View.OnClickListener() {
+            @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+            @Override
+            public void onClick(View view) {
+                takeScreenshot(2);
 
+
+            }
+        });
     }
 
 
@@ -293,6 +341,7 @@ public class BillSellActivity extends AppCompatActivity implements BillSellActiv
 
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     private void takeScreenshot(int mode) {
         Date now = new Date();
         android.text.format.DateFormat.format("yyyy-MM-dd_hh:mm:ss", now);
@@ -321,7 +370,8 @@ public class BillSellActivity extends AppCompatActivity implements BillSellActiv
             if (mode == 1) {
                 shareImage(new File(filePath));
             } else {
-                sendData(filePath);
+                convertPDF(filePath);
+                //sendData(filePath);
                 //printPhoto(FileProvider.getUriForFile(this, BuildConfig.APPLICATION_ID + ".provider",new File(filePath)));
             }
 //   Bitmap ssbitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath());
@@ -371,162 +421,234 @@ public class BillSellActivity extends AppCompatActivity implements BillSellActiv
     // this will find a bluetooth printer device
     void findBT() {
 
-        try {
-            mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-
-
-            if (!mBluetoothAdapter.isEnabled()) {
-                Intent enableBluetooth = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-                startActivityForResult(enableBluetooth, 0);
-            }
-
-            Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
-            CreateDialogAlert(this, pairedDevices);
-
-            //    Toast.makeText(this, "Bluetooth device found." + mmDevice.getName() + pairedDevices.size(), Toast.LENGTH_LONG).show();
-            //     myLabel.setText("Bluetooth device found.");
-
-        } catch (Exception e) {
-            Log.e("ldkkd", e.toString());
-        }
+        //try {
+//            mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+//
+//
+//            if (!mBluetoothAdapter.isEnabled()) {
+//                Intent enableBluetooth = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+//                startActivityForResult(enableBluetooth, 0);
+//            }
+//
+//            Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
+//            CreateDialogAlert(this, pairedDevices);
+//
+//            //    Toast.makeText(this, "Bluetooth device found." + mmDevice.getName() + pairedDevices.size(), Toast.LENGTH_LONG).show();
+//            //     myLabel.setText("Bluetooth device found.");
+//
+//        } catch (Exception e) {
+//            Log.e("ldkkd", e.toString());
+//        }
+//        if (size > 0) {
+//CreateDialogAlert(this,results);
+//        }
     }
 
-    public void CreateDialogAlert(Context context, Set<BluetoothDevice> bluetoothDeviceList) {
-        List<BluetoothDevice> bluetoothDeviceList1 = new ArrayList<>();
-        bluetoothDeviceList1.addAll(bluetoothDeviceList);
-        dialog2 = new AlertDialog.Builder(context)
-                .create();
+//    public void CreateDialogAlert(Context context, List<ScanResult> bluetoothDeviceList) {
+//        List<ScanResult> bluetoothDeviceList1 = new ArrayList<>();
+//        bluetoothDeviceList1.addAll(bluetoothDeviceList);
+//        dialog2 = new AlertDialog.Builder(context)
+//                .create();
+//
+//        DialogBluthoosBinding binding = DataBindingUtil.inflate(LayoutInflater.from(context), R.layout.dialog_bluthoos, null, false);
+//        BluthoosAdapter bluetoothAdapter = new BluthoosAdapter(context, bluetoothDeviceList1);
+//        binding.bluthoos.setLayoutManager(new LinearLayoutManager(context));
+//        binding.bluthoos.setAdapter(bluetoothAdapter);
+//
+//        dialog2.getWindow().getAttributes().windowAnimations = R.style.Theme_App;
+//        dialog2.setCanceledOnTouchOutside(false);
+//        dialog2.setView(binding.getRoot());
+//        dialog2.show();
+//    }
 
-        DialogBluthoosBinding binding = DataBindingUtil.inflate(LayoutInflater.from(context), R.layout.dialog_bluthoos, null, false);
-        BluthoosAdapter bluetoothAdapter = new BluthoosAdapter(context, bluetoothDeviceList1);
-        binding.bluthoos.setLayoutManager(new LinearLayoutManager(context));
-        binding.bluthoos.setAdapter(bluetoothAdapter);
-
-        dialog2.getWindow().getAttributes().windowAnimations = R.style.Theme_App;
-        dialog2.setCanceledOnTouchOutside(false);
-        dialog2.setView(binding.getRoot());
-        dialog2.show();
-    }
-
-    public void openBT(BluetoothDevice bluetoothDevice) throws IOException {
-        try {
-            dialog2.dismiss();
-
-            mmDevice = bluetoothDevice;
-            // Standard SerialPortService ID
-            UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb");
-            mmSocket = mmDevice.createRfcommSocketToServiceRecord(uuid);
-            mmSocket.connect();
-            mmOutputStream = mmSocket.getOutputStream();
-            inputStream = mmSocket.getInputStream();
-
-            beginListenForData();
-
-            // myLabel.setText("Bluetooth Opened");
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    /*
-     * after opening a connection to bluetooth printer device,
-     * we have to listen and check if a data were sent to be printed.
-     */
-    void sendData(String strPath) throws IOException {
-
-
-        Bitmap imageBit = BitmapFactory.decodeFile(strPath);
-
-        ByteArrayOutputStream blob = new ByteArrayOutputStream();
-        imageBit.compress(Bitmap.CompressFormat.PNG, 0, blob);
-        byte[] bitmapdata = blob.toByteArray();
-
-      binding.image.setImageBitmap(imageBit);
-
-
-        mmOutputStream.write(bitmapdata);
-        // tell the user data were sent
-      //  myLabel.setText("Data Sent");
-
-    }
-    void beginListenForData() {
-        try {
-            final Handler handler = new Handler();
-
-            // this is the ASCII code for a newline character
-            final byte delimiter = 10;
-
-            stopWorker = false;
-            readBufferPosition = 0;
-            readBuffer = new byte[1024];
-
-            workerThread = new Thread(new Runnable() {
-                public void run() {
-
-                    while (!Thread.currentThread().isInterrupted() && !stopWorker) {
-
-                        try {
-
-                            int bytesAvailable = inputStream.available();
-
-                            if (bytesAvailable > 0) {
-
-                                byte[] packetBytes = new byte[bytesAvailable];
-                                inputStream.read(packetBytes);
-
-                                for (int i = 0; i < bytesAvailable; i++) {
-
-                                    byte b = packetBytes[i];
-                                    if (b == delimiter) {
-
-                                        byte[] encodedBytes = new byte[readBufferPosition];
-                                        System.arraycopy(
-                                                readBuffer, 0,
-                                                encodedBytes, 0,
-                                                encodedBytes.length
-                                        );
-
-                                        // specify US-ASCII encoding
-                                        final String data = new String(encodedBytes, "US-ASCII");
-                                        readBufferPosition = 0;
-
-                                        // tell the user data were sent to bluetooth printer device
-                                        handler.post(new Runnable() {
-                                            public void run() {
-                                                // myLabel.setText(data);
-                                            }
-                                        });
-
-                                    } else {
-                                        readBuffer[readBufferPosition++] = b;
-                                    }
-                                }
-                            }
-
-                        } catch (IOException ex) {
-                            stopWorker = true;
-                        }
-
-                    }
-                }
-            });
-
-            workerThread.start();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-//    void closeBT() throws IOException {
+    //    public void openBT(ScanResult scanResult) throws IOException {
 //        try {
-//            stopWorker = true;
-//            mmOutputStream.close();
-//            mmInputStream.close();
-//            mmSocket.close();
-//            myLabel.setText("Bluetooth Closed");
+//            dialog2.dismiss();
+//
+//
+//            // Standard SerialPortService ID
+//            UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb");
+//            mmSocket = mmDevice.createRfcommSocketToServiceRecord(uuid);
+//            mmSocket.connect();
+//            mmOutputStream = mmSocket.getOutputStream();
+//            inputStream = mmSocket.getInputStream();
+//
+//            beginListenForData();
+//
+//             myLabel.setText("Bluetooth Opened");
+//
 //        } catch (Exception e) {
 //            e.printStackTrace();
 //        }
 //    }
+//
+//    /*
+//     * after opening a connection to bluetooth printer device,
+//     * we have to listen and check if a data were sent to be printed.
+//     */
+//    void sendData(String strPath) throws IOException {
+//
+//
+//        Bitmap imageBit = BitmapFactory.decodeFile(strPath);
+//
+//        ByteArrayOutputStream blob = new ByteArrayOutputStream();
+//        imageBit.compress(Bitmap.CompressFormat.PNG, 0, blob);
+//        byte[] bitmapdata = blob.toByteArray();
+//
+//     //   binding.image.setImageBitmap(imageBit);
+//
+//        findBT();
+//
+//     //   mmOutputStream.write(bitmapdata);
+//        // tell the user data were sent
+//        //  myLabel.setText("Data Sent");
+//
+//    }
+//
+//    void beginListenForData() {
+////        try {
+////            final Handler handler = new Handler();
+////
+////            // this is the ASCII code for a newline character
+////            final byte delimiter = 10;
+////
+////            stopWorker = false;
+////            readBufferPosition = 0;
+////            readBuffer = new byte[1024];
+////
+////            workerThread = new Thread(new Runnable() {
+////                public void run() {
+////
+////                    while (!Thread.currentThread().isInterrupted() && !stopWorker) {
+////
+////                        try {
+////
+////                            int bytesAvailable = inputStream.available();
+////
+////                            if (bytesAvailable > 0) {
+////
+////                                byte[] packetBytes = new byte[bytesAvailable];
+////                                inputStream.read(packetBytes);
+////
+////                                for (int i = 0; i < bytesAvailable; i++) {
+////
+////                                    byte b = packetBytes[i];
+////                                    if (b == delimiter) {
+////
+////                                        byte[] encodedBytes = new byte[readBufferPosition];
+////                                        System.arraycopy(
+////                                                readBuffer, 0,
+////                                                encodedBytes, 0,
+////                                                encodedBytes.length
+////                                        );
+////
+////                                        // specify US-ASCII encoding
+////                                        final String data = new String(encodedBytes, "US-ASCII");
+////                                        readBufferPosition = 0;
+////
+////                                        // tell the user data were sent to bluetooth printer device
+////                                        handler.post(new Runnable() {
+////                                            public void run() {
+////                                                // myLabel.setText(data);
+////                                            }
+////                                        });
+////
+////                                    } else {
+////                                        readBuffer[readBufferPosition++] = b;
+////                                    }
+////                                }
+////                            }
+////
+////                        } catch (IOException ex) {
+////                            stopWorker = true;
+////                        }
+////
+////                    }
+////                }
+////            });
+////
+////            workerThread.start();
+////
+////        } catch (Exception e) {
+////            e.printStackTrace();
+////        }
+//    }
+////    void closeBT() throws IOException {
+////        try {
+////            stopWorker = true;
+////            mmOutputStream.close();
+////            mmInputStream.close();
+////            mmSocket.close();
+////            myLabel.setText("Bluetooth Closed");
+////        } catch (Exception e) {
+////            e.printStackTrace();
+////        }
+////    }
+//private void checkWifi(){
+//    IntentFilter filter = new IntentFilter();
+//    filter.addAction(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
+//    final WifiManager wifiManager =
+//            (WifiManager)this.getApplicationContext().getSystemService(Context.WIFI_SERVICE);;
+//    registerReceiver(new BroadcastReceiver(){
+//        @Override
+//        public void onReceive(Context arg0, Intent arg1) {
+//            // TODO Auto-generated method stub
+//            Log.d("wifi","Open Wifimanager");
+//
+//            String scanList = wifiManager.getScanResults().toString();
+//            Log.d("wifi","Scan:"+scanList);
+//        }
+//    },filter);
+//    wifiManager.startScan();
+//}
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+    public void convertPDF(String path) {
+        String FILE = Environment.getExternalStorageDirectory().toString() + "/FirstPdf.pdf";
+        Document document = new Document();
+        try {
+            PdfWriter.getInstance(document, new FileOutputStream(FILE));
+            document.open();
+
+            try {
+                image = Image.getInstance(path);
+                // image.getHeight();
+                //    document.setPageSize(new Rectangle(image.getAbsoluteX(),image.getAbsoluteY()));
+                float scaler = ((document.getPageSize().getWidth() - document.leftMargin()
+                        - document.rightMargin() - 0) / image.getWidth()) * 100;
+                float scaler1 = ((document.getPageSize().getHeight() - document.bottom()
+                        - document.topMargin() - 0) / image.getHeight());// 0 means you have no indentation. If you have any, change it.
+                image.scalePercent(scaler);
+//                image.setAbsolutePosition(
+//                        (document.getPageSize().getWidth() - image.getScaledWidth()) / 2,
+//                        (document.getPageSize().getHeight() - image.getScaledHeight()) / 2);
+                image.scaleAbsoluteHeight(scaler1);
+                image.scaleToFit(document.getPageSize().getWidth(), document.getPageSize().getHeight() - 80);
+                image.setAlignment(Image.ALIGN_CENTER | Image.ALIGN_TOP);
+                //  document.setPageSize(new com.itextpdf.text.Rectangle(image.getWidth(), image.getScaledHeight() * 200));
+
+                document.add(image);
+                document.close();
+                //  document.add(new Paragraph("My Heading"));
+printpdf();
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } catch (DocumentException e) {
+            Log.e("message1", e.toString());
+        } catch (FileNotFoundException e) {
+            Log.e("message2", e.toString());
+        }
+    }
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+    private void printpdf(){
+        PrintManager printManager=(PrintManager) getSystemService(Context.PRINT_SERVICE);
+try {
+    PrintDocumentAdapter printDocumentAdapter=new PdfDocumentAdpter(BillSellActivity.this,Environment.getExternalStorageDirectory().toString() + "/FirstPdf.pdf");
+    printManager.print("Document",printDocumentAdapter,new PrintAttributes.Builder().build());
+}
+catch (Exception e){
+
+}
+    }
 }

@@ -7,8 +7,8 @@ import android.util.Log;
 import androidx.databinding.BaseObservable;
 import androidx.databinding.Bindable;
 import androidx.databinding.ObservableField;
-import androidx.databinding.library.baseAdapters.BR;
 
+import com.cashiar.BR;
 import com.cashiar.R;
 
 public class EditProfileModel extends BaseObservable {
