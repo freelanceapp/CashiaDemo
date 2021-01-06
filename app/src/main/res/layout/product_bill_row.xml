@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+
+
+        <variable
+            name="lang"
+            type="String" />
+        <variable
+            name="currency"
+            type="String" />
+
+        <variable
+            name="model"
+            type="com.cashiar.models.ItemCartModel" />
+
+    </data>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+
+        android:background="@color/gray3"
+        >
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:layout_weight="1"
+            android:text="@{model.title}"
+            android:textColor="@color/deptext"
+            android:textSize="@dimen/_13sdp" />
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:layout_weight="1"
+            android:text='@{model.amount+""}'
+            android:textColor="@color/deptext"
+            android:textSize="@dimen/_13sdp" />
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:layout_weight="1"
+            android:text='@{(model.amount*model.price_value)+currency}'
+            android:textColor="@color/deptext"
+            android:textSize="@dimen/_13sdp" />
+    </LinearLayout>
+
+
+
+</layout>
