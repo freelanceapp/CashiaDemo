@@ -74,7 +74,7 @@ import com.cashiar.share.Common;
 import com.cashiar.tags.Tags;
 import com.cashiar.ui.activity_add_Customer.AddCustomerActivity;
 import com.cashiar.ui.activity_cart_buy.CartBuyActivity;
-import com.chaos.view.BuildConfig;
+import com.cashiar.BuildConfig;
 import com.itextpdf.text.Document;
 import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.Image;
