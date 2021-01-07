@@ -106,6 +106,7 @@ import java.util.UUID;
 
 import io.paperdb.Paper;
 
+import static android.os.Build.VERSION_CODES.KITKAT;
 import static android.os.Build.VERSION_CODES.M;
 
 public class BillSellActivity extends AppCompatActivity implements BillSellActivityView {
@@ -131,6 +132,7 @@ public class BillSellActivity extends AppCompatActivity implements BillSellActiv
 //
     private boolean isPermissionGranted = false;
     private Image image;
+    private Context context;
 //    WifiManager wifi;
 //    List<ScanResult> results;
 //    BluthoosAdapter bluthoosAdapter;
@@ -140,6 +142,7 @@ public class BillSellActivity extends AppCompatActivity implements BillSellActiv
     @Override
     protected void attachBaseContext(Context newBase) {
         Paper.init(newBase);
+        this.context=newBase;
         super.attachBaseContext(Language.updateResources(newBase, Paper.book().read("lang", "ar")));
     }
 
@@ -341,14 +344,13 @@ public class BillSellActivity extends AppCompatActivity implements BillSellActiv
 
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     private void takeScreenshot(int mode) {
         Date now = new Date();
         android.text.format.DateFormat.format("yyyy-MM-dd_hh:mm:ss", now);
 
         try {
             // image naming and path  to include sd card  appending name you choose for file
-            String mPath = Environment.getExternalStorageDirectory().toString() + "/" + now.toString().replaceAll(" ", "") + ".jpeg";
+            String mPath = Environment.getExternalStorageDirectory().toString() + "/" + "share"+ ".jpeg";
 
             // create bitmap screen capture
             ScrollView v1 = (ScrollView) getWindow().getDecorView().findViewById(R.id.scrollView);
@@ -370,7 +372,8 @@ public class BillSellActivity extends AppCompatActivity implements BillSellActiv
             if (mode == 1) {
                 shareImage(new File(filePath));
             } else {
-                convertPDF(filePath);
+                if(Build.VERSION.SDK_INT>=KITKAT)
+                    convertPDF(filePath);
                 //sendData(filePath);
                 //printPhoto(FileProvider.getUriForFile(this, BuildConfig.APPLICATION_ID + ".provider",new File(filePath)));
             }
@@ -629,7 +632,7 @@ public class BillSellActivity extends AppCompatActivity implements BillSellActiv
                 document.add(image);
                 document.close();
                 //  document.add(new Paragraph("My Heading"));
-printpdf();
+                printpdf();
 
             } catch (IOException e) {
                 e.printStackTrace();
@@ -640,15 +643,16 @@ printpdf();
             Log.e("message2", e.toString());
         }
     }
-    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
-    private void printpdf(){
-        PrintManager printManager=(PrintManager) getSystemService(Context.PRINT_SERVICE);
-try {
-    PrintDocumentAdapter printDocumentAdapter=new PdfDocumentAdpter(BillSellActivity.this,Environment.getExternalStorageDirectory().toString() + "/FirstPdf.pdf");
-    printManager.print("Document",printDocumentAdapter,new PrintAttributes.Builder().build());
-}
-catch (Exception e){
 
-}
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+    private void printpdf() {
+
+        PrintManager printManager = (PrintManager) context.getSystemService(Context.PRINT_SERVICE);
+        try {
+            PrintDocumentAdapter printDocumentAdapter = new PdfDocumentAdpter(context, Environment.getExternalStorageDirectory().toString() + "/FirstPdf.pdf");
+            printManager.print("Document", printDocumentAdapter, new PrintAttributes.Builder().build());
+        } catch (Exception e) {
+            Log.e("sssssss", e.getMessage());
+        }
     }
 }
