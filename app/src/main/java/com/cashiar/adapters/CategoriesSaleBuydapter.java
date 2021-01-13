@@ -42,11 +42,11 @@ public class CategoriesSaleBuydapter extends RecyclerView.Adapter<CategoriesSale
     public void onBindViewHolder(@NonNull CategoryViewholder holder, int position) {
         holder.binding.setModel(list.get(position));
 
-        if (list.get(position).getDisplay_logo_type().equals("color")) {
-            holder.binding.image.setBackgroundColor(Color.parseColor(list.get(position).getColor().getColor_code()));
-        } else {
+//        if (list.get(position).getDisplay_logo_type().equals("color")) {
+//            holder.binding.image.setBackgroundColor(Color.parseColor(list.get(position).getColor().getColor_code()));
+//        } else {
             Picasso.get().load(Tags.IMAGE_URL + list.get(position).getImage()).into(holder.binding.image);
-        }
+       // }
         holder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
